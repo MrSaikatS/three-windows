@@ -25,14 +25,14 @@ One process, one port (`:3000`), no Vite, no proxy, no multi-process orchestrati
 
 ## The three transports (behavioural contract)
 
-| Concern | Polling | WebSocket | SSE |
-|---|---|---|---|
-| Connection model | Fresh HTTP request per poll | Single persistent WS connection | Single persistent HTTP response |
-| Direction | Client → server (pull) | Bidirectional (server pushes) | Server → client (push) |
-| Latency floor | Poll interval | Network only | Network only |
-| Stale-by on kill | New request gets `fetch` error | Connection just dies | Browser auto-reconnects on next event |
-| Auto-reconnect | Free (next poll retries) | **None** (manual button exposes this) | Free (browser native) |
-| Per-panel extras | Interval dropdown (100/250/1000/5000 ms), requests-sent counter | Reconnect counter, connection dot | Connection dot |
+| Concern          | Polling                                                         | WebSocket                             | SSE                                   |
+| ---------------- | --------------------------------------------------------------- | ------------------------------------- | ------------------------------------- |
+| Connection model | Fresh HTTP request per poll                                     | Single persistent WS connection       | Single persistent HTTP response       |
+| Direction        | Client → server (pull)                                          | Bidirectional (server pushes)         | Server → client (push)                |
+| Latency floor    | Poll interval                                                   | Network only                          | Network only                          |
+| Stale-by on kill | New request gets `fetch` error                                  | Connection just dies                  | Browser auto-reconnects on next event |
+| Auto-reconnect   | Free (next poll retries)                                        | **None** (manual button exposes this) | Free (browser native)                 |
+| Per-panel extras | Interval dropdown (100/250/1000/5000 ms), requests-sent counter | Reconnect counter, connection dot     | Connection dot                        |
 
 The panel with the polling dropdown is the only one that varies its cadence; the data source is switchable globally for all three panels from the header.
 
@@ -191,12 +191,12 @@ Snapshot is updated on a 250 ms `setInterval`.
 
 ## Commands
 
-| Command | Purpose |
-|---|---|
-| `bun dev` | Dev server: `Bun.serve` with `--hot`. HMR for React tree; auto-restart on `src/index.tsx` changes. |
-| `bun run build` | Pre-build the React/CSS bundle into a manifest via `bun build`. |
-| `bun start` | Run the production server with the pre-built manifest. |
-| `bunx tsc --noEmit` | Typecheck both server and client. |
+| Command             | Purpose                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| `bun dev`           | Dev server: `Bun.serve` with `--hot`. HMR for React tree; auto-restart on `src/index.tsx` changes. |
+| `bun run build`     | Pre-build the React/CSS bundle into a manifest via `bun build`.                                    |
+| `bun start`         | Run the production server with the pre-built manifest.                                             |
+| `bunx tsc --noEmit` | Typecheck both server and client.                                                                  |
 
 ## TypeScript
 
@@ -232,7 +232,7 @@ Single `tsconfig.json` at the project root:
 
 ## Decisions made
 
-- **Stack pivot from v2 (Vite) to v3 (Bun fullstack):** `bun init --react=shadcn` provides an official single-process scaffold that eliminates Vite, the proxy, and the dev orchestrator. (User pointed to https://bun.com/docs/runtime/templating/init#examples.)
+- **Stack pivot to v3 (Bun fullstack):** `bun init --react=shadcn` provides an official single-process scaffold that eliminates Vite, the proxy, and the dev orchestrator. (User pointed to https://bun.com/docs/runtime/templating/init#examples.)
 - **No chart library.** Sparkline is hand-rolled inline SVG (~30 lines).
 - **No auto-reconnect for WebSocket.** The whole point is to make the missing piece obvious.
 - **Server files under `src/server/`.** Soft separation from React UI; avoids the cross-directory import friction of a top-level `server/`.
