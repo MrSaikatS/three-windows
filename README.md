@@ -8,7 +8,7 @@ See `plan.md` for the full design and `AGENTS.md` for repo conventions.
 
 ## Phases
 
-- [ ] **Phase 0 — Scaffold.** `bun init --react=shadcn`, restore `AGENTS.md` and `LICENSE`, add shadcn components (card, button, select, toggle-group, badge, separator, tooltip).
+- [x] **Phase 0 — Scaffold.** `bun init --react=shadcn`, restore `AGENTS.md` and `LICENSE`, add shadcn components (card, button, select, toggle-group, badge, separator, tooltip).
 - [ ] **Phase 1 — Server: ticker & snapshot.** Shared `Ticker` with `Ticker` and `System` modes, 250 ms tick. `GET /api/snapshot` returns the latest snapshot as JSON.
 - [ ] **Phase 2 — Server: SSE.** `GET /api/stream/sse` returns a long-lived `text/event-stream` that pushes a snapshot on every tick.
 - [ ] **Phase 3 — Server: WebSocket.** `GET /api/stream/ws` upgrades the connection and pushes a snapshot on every tick.
