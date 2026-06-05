@@ -51,11 +51,14 @@ No `bun test` files, no lint/format, no CI. Don't invent them.
 
 ## shadcn
 
-- `components.json`: `style: "new-york"`, `baseColor: "neutral"`, `iconLibrary: "lucide"`, `cssVariables: true`, RSC off.
+- `components.json`: `style: "base-nova"`, `baseColor: "neutral"`, `iconLibrary: "lucide"`, `cssVariables: true`, RSC off, `rtl: false`, `menuColor: "default"`, `menuAccent: "subtle"`.
 - Add with `bunx --bun shadcn@latest add <name> --yes` → lands in `src/components/ui/`.
-- **Two Radix import styles coexist; don't normalize without reason:**
-  - Template-bundled `select.tsx` → `@radix-ui/react-select` (per-package, in `package.json`).
-  - Components added via `shadcn add` (toggle-group, tooltip, badge, separator) → `radix-ui` meta-package.
+- **All primitives come from `@base-ui/react/<name>`** (Base UI, not Radix). The `radix-ui` + `@radix-ui/react-*` entries in `package.json` are leftovers from the prior `new-york` scaffold; nothing imports them — safe to remove when convenient.
+- Three implementation patterns coexist; pick by component need:
+  - **Base UI primitive + cva** — interactive controls: `button`, `input`, `select`, `separator`, `toggle`, `toggle-group`, `tooltip`.
+  - **`useRender` + `mergeProps`** — plain elements that need variant control (e.g. `badge`).
+  - **Plain React + cva** — non-interactive presentation only: `card`, `label`, `textarea`.
+- Every component sets a `data-slot` attribute on its root element; use it as the styling hook (e.g. `data-[slot=select-value]:…`, `in-data-[slot=button-group]:rounded-lg`).
 - `<Tooltip>` needs a `<TooltipProvider>` near the React root (per shadcn CLI output).
 
 ## TypeScript (`tsconfig.json`)
