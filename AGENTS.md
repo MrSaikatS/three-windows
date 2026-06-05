@@ -21,6 +21,11 @@ Bun-only TypeScript scaffold. `index.ts` is a placeholder (`console.log("Hello v
 - Tests: `bun test` (none configured — no test files exist)
 - Lint / format: not configured — don't invent commands
 
+## Code style
+
+- **Always use arrow functions.** No `function` declarations, no `function` expressions. Use `const name = (...args) => ...` for top-level functions, callbacks, and React components (`const Panel = () => { ... }`).
+- Avoid inline type annotations on arrow function parameters only when the type is obvious from the parameter name; otherwise annotate.
+
 ## TypeScript gotchas (`tsconfig.json`)
 
 - `lib: ["ESNext"]` only — **no DOM types**. `document`, `window`, `fetch`, etc. will not resolve.
