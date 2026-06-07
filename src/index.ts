@@ -1,6 +1,6 @@
 import index from "./index.html";
-import { ticker } from "./server/ticker.ts";
 import { sseResponse } from "./server/sse.ts";
+import { ticker } from "./server/ticker.ts";
 import { wsHandlers } from "./server/ws.ts";
 
 const server = Bun.serve({
@@ -13,7 +13,7 @@ const server = Bun.serve({
 
     if (url.pathname === "/api/snapshot") {
       if (req.method === "POST") {
-        const body = await req.clone().json() as { mode?: string };
+        const body = (await req.clone().json()) as { mode?: string };
         if (body.mode === "ticker" || body.mode === "system") {
           ticker.setMode(body.mode);
         }
