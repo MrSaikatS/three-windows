@@ -1,39 +1,22 @@
-import { serve } from "bun";
 import index from "./index.html";
+import { ticker } from "./server/ticker.ts";
 
-const server = serve({
+const server = Bun.serve({
+  port: 3000,
   routes: {
-    // Serve index.html for all unmatched routes.
-    "/*": index,
-
-    "/api/hello": {
-      async GET(req) {
-        return Response.json({
-          message: "Hello, world!",
-          method: "GET",
-        });
-      },
-      async PUT(req) {
-        return Response.json({
-          message: "Hello, world!",
-          method: "PUT",
-        });
-      },
-    },
-
-    "/api/hello/:name": async req => {
-      const name = req.params.name;
-      return Response.json({
-        message: `Hello, ${name}!`,
-      });
-    },
+    "/": index,
   },
+  fetch(req) {
+    const url = new URL(req.url);
 
+    if (url.pathname === "/api/snapshot") {
+      return Response.json(ticker.latest());
+    }
+
+    return new Response("Not found", { status: 404 });
+  },
   development: process.env.NODE_ENV !== "production" && {
-    // Enable browser hot reloading in development
     hmr: true,
-
-    // Echo console logs from the browser to the server
     console: true,
   },
 });
