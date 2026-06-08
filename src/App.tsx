@@ -12,11 +12,21 @@ import { Activity } from "lucide-react";
 const App = () => {
   const { mode, toggle } = useDataSource("ticker");
   const [killed, setKilled] = useState(false);
+  const [killError, setKillError] = useState<string | null>(null);
 
   const handleKillToggle = useCallback(async () => {
+    setKillError(null);
     const endpoint = killed ? "/api/respawn" : "/api/kill";
-    const res = await fetch(endpoint, { method: "POST" });
-    if (res.ok) setKilled(!killed);
+    try {
+      const res = await fetch(endpoint, { method: "POST" });
+      if (!res.ok) {
+        setKillError(`Server returned ${res.status}`);
+        return;
+      }
+      setKilled(!killed);
+    } catch (err) {
+      setKillError(err instanceof Error ? err.message : "Network error");
+    }
   }, [killed]);
 
   return (
@@ -53,6 +63,7 @@ const App = () => {
                 <KillServerButton
                   killed={killed}
                   onToggle={handleKillToggle}
+                  errorMessage={killError}
                 />
                 <ModeToggle />
               </div>

@@ -10,9 +10,10 @@ import {
 interface KillServerButtonProps {
   killed: boolean;
   onToggle: () => void;
+  errorMessage?: string | null;
 }
 
-const KillServerButton = ({ killed, onToggle }: KillServerButtonProps) => (
+const KillServerButton = ({ killed, onToggle, errorMessage }: KillServerButtonProps) => (
   <Tooltip>
     <TooltipTrigger
       render={
@@ -30,9 +31,9 @@ const KillServerButton = ({ killed, onToggle }: KillServerButtonProps) => (
       </span>
     </TooltipTrigger>
     <TooltipContent>
-      {killed ?
+      {errorMessage || (killed ?
         "Respawn server ticker"
-      : "Kill server (stop ticker, close WS/SSE)"}
+      : "Kill server (stop ticker, close WS/SSE)")}
     </TooltipContent>
   </Tooltip>
 );

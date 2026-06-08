@@ -1,6 +1,7 @@
 import type { Snapshot } from "@/types";
 import {
   cancelReconnect,
+  clearManualReconnect,
   createReconnectState,
   manualReconnect,
   scheduleReconnect,
@@ -26,7 +27,10 @@ export const createSSETransport = (): Transport & {
   const connect = () => {
     setStatus("connecting");
     es = new EventSource("/api/stream/sse");
-    es.onopen = () => setStatus("connected");
+    es.onopen = () => {
+      setStatus("connected");
+      clearManualReconnect(rc);
+    };
     es.onmessage = (e) => {
       try {
         const snapshot: Snapshot = JSON.parse(e.data as string);
@@ -40,8 +44,8 @@ export const createSSETransport = (): Transport & {
       es?.close();
       es = null;
       setStatus("disconnected");
-      if (!rc.manualReconnect)
-        scheduleReconnect(rc, connect, () => subscribers.size > 0);
+      scheduleReconnect(rc, connect, () => subscribers.size > 0);
+      clearManualReconnect(rc);
     };
   };
 

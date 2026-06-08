@@ -24,11 +24,12 @@ export const createPollingTransport = (): Transport & {
     requestsSent++;
     setStatus("connecting");
     fetch("/api/snapshot", { signal })
-      .then((r) => r.json() as Promise<Snapshot>)
-      .then((s) => {
+      .then((r) => r.text())
+      .then((raw) => {
         if (!signal.aborted) {
+          const s: Snapshot = JSON.parse(raw);
           setStatus("connected");
-          bytesTransferred += JSON.stringify(s).length + 1400;
+          bytesTransferred += raw.length + 1400;
           for (const cb of subscribers) cb(s);
         }
       })

@@ -33,10 +33,13 @@ export const cancelReconnect = (state: ReconnectState) => {
   }
 };
 
+export const clearManualReconnect = (state: ReconnectState) => {
+  state.manualReconnect = false;
+};
+
 export const manualReconnect = (state: ReconnectState, connect: () => void) => {
   state.manualReconnect = true;
   cancelReconnect(state);
   state.reconnectCount++;
   connect();
-  state.manualReconnect = false;
 };

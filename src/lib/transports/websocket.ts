@@ -1,6 +1,7 @@
 import type { Snapshot } from "@/types";
 import {
   cancelReconnect,
+  clearManualReconnect,
   createReconnectState,
   manualReconnect,
   scheduleReconnect,
@@ -25,8 +26,12 @@ export const createWebSocketTransport = (): Transport & {
 
   const connect = () => {
     setStatus("connecting");
-    ws = new WebSocket(`ws://${location.host}/api/stream/ws`);
-    ws.onopen = () => setStatus("connected");
+    const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+    ws = new WebSocket(`${wsProto}//${location.host}/api/stream/ws`);
+    ws.onopen = () => {
+      setStatus("connected");
+      clearManualReconnect(rc);
+    };
     ws.onmessage = (e) => {
       try {
         const snapshot: Snapshot = JSON.parse(e.data as string);
@@ -39,8 +44,10 @@ export const createWebSocketTransport = (): Transport & {
     ws.onclose = () => {
       ws = null;
       setStatus("disconnected");
-      if (!rc.manualReconnect)
+      if (!rc.manualReconnect) {
         scheduleReconnect(rc, connect, () => subscribers.size > 0);
+      }
+      clearManualReconnect(rc);
     };
     ws.onerror = () => {
       ws?.close();

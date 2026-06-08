@@ -142,7 +142,7 @@ export const useTransport = (
         transportRef.current = null;
       };
     }
-  }, [kind, initialInterval, pushDataPoint]);
+  }, [kind, initialInterval, pushDataPoint, recordUpdate]);
 
   const setPollingInterval = useCallback((ms: number) => {
     setCurrentInterval(ms);

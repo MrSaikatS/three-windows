@@ -5,8 +5,10 @@ import { cleanupWs, wsHandlers } from "./server/ws.ts";
 
 let killed = false;
 
+const port = parseInt(process.env.PORT || "3000", 10);
+
 const server = Bun.serve({
-  port: 3000,
+  port,
   routes: {
     "/": index,
   },
