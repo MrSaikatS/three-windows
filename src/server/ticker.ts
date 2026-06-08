@@ -8,7 +8,7 @@ const randomWalk = (current: number, step: number, lo: number, hi: number) =>
   clamp(current + (Math.random() * 2 - 1) * step, lo, hi);
 
 const buildSnapshot = (mode: Mode, prev: Snapshot | null): Snapshot => {
-  const ts = Date.now();
+  const ts = performance.now();
   if (mode === "ticker") {
     const value = prev && prev.mode === "ticker" ? randomWalk(prev.value, 0.5, 1, 1000) : 100;
     return { mode: "ticker", value, ts };
@@ -28,13 +28,14 @@ const createTicker = () => {
   let mode: Mode = "ticker";
   let latest: Snapshot = buildSnapshot(mode, null);
   const subscribers = new Set<(s: Snapshot) => void>();
+  let interval: ReturnType<typeof setInterval>;
 
   const tick = () => {
     latest = buildSnapshot(mode, latest);
     for (const cb of subscribers) cb(latest);
   };
 
-  const interval = setInterval(tick, TICK_MS);
+  interval = setInterval(tick, TICK_MS);
 
   return {
     latest: (): Snapshot => latest,
@@ -51,6 +52,10 @@ const createTicker = () => {
     stop: () => {
       clearInterval(interval);
       subscribers.clear();
+    },
+    start: () => {
+      if (interval) clearInterval(interval);
+      interval = setInterval(tick, TICK_MS);
     },
   };
 };

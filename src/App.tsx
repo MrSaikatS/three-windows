@@ -2,6 +2,7 @@ import { ThemeProvider } from "next-themes";
 
 import { Dashboard } from "@/components/Dashboard.tsx";
 import { DataSourceToggle } from "@/components/controls/DataSourceToggle.tsx";
+import { KillServerButton } from "@/components/controls/KillServerButton.tsx";
 import { ModeToggle } from "@/components/controls/ModeToggle.tsx";
 import { TooltipProvider } from "@/components/ui/tooltip.tsx";
 import { useDataSource } from "@/hooks/useDataSource.ts";
@@ -41,6 +42,7 @@ const App = () => {
                   mode={mode}
                   onChange={toggle}
                 />
+                <KillServerButton />
                 <ModeToggle />
               </div>
             </div>

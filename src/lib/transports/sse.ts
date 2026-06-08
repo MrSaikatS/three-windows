@@ -2,9 +2,11 @@ import type { Snapshot } from "@/types";
 import type { Transport, TransportStatus } from "./types.ts";
 
 export const createSSETransport = (): Transport & {
+  getBytesTransferred: () => number;
   onStatusChange: (cb: ((status: TransportStatus) => void) | null) => void;
 } => {
   let es: EventSource | null = null;
+  let bytesTransferred = 0;
   let subscribers = new Set<(s: Snapshot) => void>();
   let statusCallback: ((status: TransportStatus) => void) | null = null;
 
@@ -19,6 +21,7 @@ export const createSSETransport = (): Transport & {
       setStatus("connected");
       try {
         const snapshot: Snapshot = JSON.parse(e.data as string);
+        bytesTransferred += (e.data as string).length + 8;
         for (const cb of subscribers) cb(snapshot);
       } catch { /* skip malformed */ }
     };
@@ -28,6 +31,7 @@ export const createSSETransport = (): Transport & {
   };
 
   return {
+    getBytesTransferred: () => bytesTransferred,
     onStatusChange(cb) {
       statusCallback = cb;
     },

@@ -7,8 +7,9 @@ import { createSSETransport } from "@/lib/transports/sse.ts";
 
 const MAX_SPARKLINE = 60;
 
-type WithPolling = Transport & { setInterval: (ms: number) => void; getRequestsSent: () => number };
-type WithWs = Transport & { reconnect: () => void; getReconnectCount: () => number };
+type WithPolling = Transport & { setInterval: (ms: number) => void; getRequestsSent: () => number; getBytesTransferred: () => number };
+type WithWs = Transport & { reconnect: () => void; getReconnectCount: () => number; getBytesTransferred: () => number };
+type WithSse = Transport & { getBytesTransferred: () => number };
 
 export const useTransport = (kind: "polling" | "websocket" | "sse", initialInterval = 1000) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -16,6 +17,7 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
   const [updateCount, setUpdateCount] = useState(0);
   const [requestsSent, setRequestsSent] = useState(0);
   const [reconnectCount, setReconnectCount] = useState(0);
+  const [bytesTransferred, setBytesTransferred] = useState(0);
   const [dataPoints, setDataPoints] = useState<number[]>([]);
   const [currentInterval, setCurrentInterval] = useState(initialInterval);
   const pollingRef = useRef<WithPolling | null>(null);
@@ -39,6 +41,7 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
         setSnapshot(s);
         setUpdateCount((c) => c + 1);
         setRequestsSent(p.getRequestsSent());
+        setBytesTransferred(p.getBytesTransferred());
         pushDataPoint(s);
       });
       return () => { unsub(); p.destroy(); pollingRef.current = null; };
@@ -52,6 +55,7 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
         setSnapshot(s);
         setUpdateCount((c) => c + 1);
         setReconnectCount(ws.getReconnectCount());
+        setBytesTransferred(ws.getBytesTransferred());
         pushDataPoint(s);
       });
       return () => { unsub(); ws.destroy(); wsRef.current = null; };
@@ -63,6 +67,7 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
       const unsub = sse.subscribe((s) => {
         setSnapshot(s);
         setUpdateCount((c) => c + 1);
+        setBytesTransferred(sse.getBytesTransferred());
         pushDataPoint(s);
       });
       return () => { unsub(); sse.destroy(); };
@@ -81,7 +86,7 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
     }
   }, []);
 
-  const latency = snapshot ? Date.now() - snapshot.ts : null;
+  const latency = snapshot ? performance.now() - snapshot.ts : null;
 
-  return { snapshot, status, latency, updateCount, requestsSent, reconnectCount, dataPoints, currentInterval, setPollingInterval, reconnect } as const;
+  return { snapshot, status, latency, updateCount, requestsSent, reconnectCount, bytesTransferred, dataPoints, currentInterval, setPollingInterval, reconnect } as const;
 };

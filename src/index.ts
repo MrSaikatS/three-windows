@@ -1,7 +1,7 @@
 import index from "./index.html";
-import { sseResponse } from "./server/sse.ts";
+import { sseResponse, cleanupSse } from "./server/sse.ts";
 import { ticker } from "./server/ticker.ts";
-import { wsHandlers } from "./server/ws.ts";
+import { wsHandlers, cleanupWs } from "./server/ws.ts";
 
 const server = Bun.serve({
   port: 3000,
@@ -31,6 +31,18 @@ const server = Bun.serve({
       if (ok) return;
     }
 
+    if (url.pathname === "/api/kill") {
+      ticker.stop();
+      cleanupSse();
+      cleanupWs();
+      return new Response("Killed", { status: 200 });
+    }
+
+    if (url.pathname === "/api/respawn") {
+      ticker.start();
+      return new Response("Respawned", { status: 200 });
+    }
+
     return new Response("Not found", { status: 404 });
   },
   websocket: wsHandlers(ticker),
@@ -41,3 +53,15 @@ const server = Bun.serve({
 });
 
 console.log(`🚀 Server running at ${server.url}`);
+
+const shutdown = () => {
+  console.log("\nShutting down gracefully...");
+  ticker.stop();
+  cleanupSse();
+  cleanupWs();
+  server.stop();
+  process.exit(0);
+};
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

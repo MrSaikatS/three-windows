@@ -4,10 +4,12 @@ import type { Transport, TransportStatus } from "./types.ts";
 export const createWebSocketTransport = (): Transport & {
   reconnect: () => void;
   getReconnectCount: () => number;
+  getBytesTransferred: () => number;
   onStatusChange: (cb: ((status: TransportStatus) => void) | null) => void;
 } => {
   let ws: WebSocket | null = null;
   let reconnectCount = 0;
+  let bytesTransferred = 0;
   let subscribers = new Set<(s: Snapshot) => void>();
   let statusCallback: ((status: TransportStatus) => void) | null = null;
 
@@ -22,6 +24,7 @@ export const createWebSocketTransport = (): Transport & {
     ws.onmessage = (e) => {
       try {
         const snapshot: Snapshot = JSON.parse(e.data as string);
+        bytesTransferred += (e.data as string).length;
         for (const cb of subscribers) cb(snapshot);
       } catch { /* skip malformed */ }
     };
@@ -41,6 +44,7 @@ export const createWebSocketTransport = (): Transport & {
       connect();
     },
     getReconnectCount: () => reconnectCount,
+    getBytesTransferred: () => bytesTransferred,
     onStatusChange(cb) {
       statusCallback = cb;
     },

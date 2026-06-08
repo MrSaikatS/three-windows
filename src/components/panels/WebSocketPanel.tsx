@@ -1,14 +1,16 @@
 import { useTransport } from "@/hooks/useTransport.ts";
 import { PanelShell } from "./PanelShell.tsx";
 import { LatencyBadge } from "@/components/metrics/LatencyBadge.tsx";
+import { StaleByBadge } from "@/components/metrics/StaleByBadge.tsx";
 import { MetricRow } from "@/components/metrics/MetricRow.tsx";
 import { Sparkline } from "@/components/metrics/Sparkline.tsx";
 import { StatusPill } from "@/components/metrics/StatusPill.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Activity, Gauge, RefreshCw, Layers, Repeat } from "lucide-react";
+import { Gauge, RefreshCw, Layers, Repeat, HardDrive } from "lucide-react";
 import type { Snapshot } from "@/types";
 import { TRANSPORT_META } from "./transport-meta.ts";
+import { formatBytes } from "@/lib/utils";
 
 const primaryValue = (s: Snapshot) => {
   if (s.mode === "ticker") return s.value.toFixed(2);
@@ -21,7 +23,7 @@ const primaryUnit = (s: Snapshot) => {
 };
 
 const WebSocketPanel = () => {
-  const { snapshot, status, latency, updateCount, reconnectCount, dataPoints, reconnect } =
+  const { snapshot, status, latency, updateCount, reconnectCount, bytesTransferred, dataPoints, reconnect } =
     useTransport("websocket");
 
   return (
@@ -54,14 +56,9 @@ const WebSocketPanel = () => {
       <Separator className="opacity-40" />
 
       <MetricRow label="Latency" value={<LatencyBadge latency={latency} />} icon={<Gauge className="size-3" />} />
-      {latency !== null && latency >= 1500 && (
-        <MetricRow
-          label="Stale by"
-          value={<span className="text-destructive text-xs font-mono">{latency}ms</span>}
-          icon={<Activity className="size-3" />}
-        />
-      )}
+      <MetricRow label="Stale by" value={<StaleByBadge latency={latency} />} icon={<Gauge className="size-3" />} />
       <MetricRow label="Data points" value={String(updateCount)} icon={<Layers className="size-3" />} />
+      <MetricRow label="Bytes transferred" value={formatBytes(bytesTransferred)} icon={<HardDrive className="size-3" />} />
       <MetricRow label="Reconnects" value={String(reconnectCount)} icon={<Repeat className="size-3" />} />
 
       {dataPoints.length > 1 && (
