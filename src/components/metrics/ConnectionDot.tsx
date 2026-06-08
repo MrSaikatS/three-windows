@@ -11,7 +11,10 @@ const dotClass: Record<TransportStatus, string> = {
 };
 
 const ConnectionDot = ({ status }: ConnectionDotProps) => (
-  <span className={`inline-block size-2 rounded-full ${dotClass[status]}`} title={status} />
+  <span
+    className={`inline-block size-2 rounded-full ${dotClass[status]}`}
+    title={status}
+  />
 );
 
 export { ConnectionDot };

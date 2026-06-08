@@ -4,11 +4,13 @@ import type { Transport, TransportStatus } from "./types.ts";
 export const createPollingTransport = (): Transport & {
   setInterval: (ms: number) => void;
   getRequestsSent: () => number;
+  getBytesTransferred: () => number;
 } => {
   let intervalMs = 1000;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let aborter: AbortController | null = null;
   let requestsSent = 0;
+  let bytesTransferred = 0;
   let active = false;
   let subscribers = new Set<(s: Snapshot) => void>();
   let statusCallback: ((status: TransportStatus) => void) | null = null;
@@ -22,10 +24,12 @@ export const createPollingTransport = (): Transport & {
     requestsSent++;
     setStatus("connecting");
     fetch("/api/snapshot", { signal })
-      .then((r) => r.json() as Promise<Snapshot>)
-      .then((s) => {
+      .then((r) => r.text())
+      .then((raw) => {
         if (!signal.aborted) {
+          const s: Snapshot = JSON.parse(raw);
           setStatus("connected");
+          bytesTransferred += raw.length + 1400;
           for (const cb of subscribers) cb(s);
         }
       })
@@ -42,8 +46,12 @@ export const createPollingTransport = (): Transport & {
   return {
     setInterval(ms: number) {
       intervalMs = ms;
+      aborter?.abort();
+      if (timer) clearTimeout(timer);
+      if (active) timer = setTimeout(poll, intervalMs);
     },
     getRequestsSent: () => requestsSent,
+    getBytesTransferred: () => bytesTransferred,
     onStatusChange(cb) {
       statusCallback = cb;
     },

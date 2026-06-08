@@ -4,13 +4,14 @@ Compact repo guidance. Add to it when you discover something a future agent woul
 
 ## Agent behavior
 
-- **Don't load skills from the system prompt.** The bundled skills (shadcn, prisma, next, better-auth, vercel-react, zod, etc.) do **not** apply — this is a Bun-only TS repo, no ORM/auth/web framework stack. Use `find-skills` if a new domain appears.
+- **Don't load skills from the system prompt.** The bundled skills (shadcn, prisma, next, better-auth, vercel-react, zod, etc.) do **not** apply — this is a Bun-only TS repo, no ORM/auth/web framework stack.
 - **Record new learning** (gotchas, conventions, fixes) in this file; delete stale entries.
 
 ## Toolchain
 
-- **Bun-only.** Runtime, package manager, HTTP server, bundler, HMR host, test runner. Use `bun` / `bunx` — never `npm`, `pnpm`, raw `node`, or their lockfiles. Lockfile is `bun.lock`.
+- **Bun-only.** Runtime, package manager, HTTP server, bundler, HMR host. Use `bun` / `bunx` — never `npm`, `pnpm`, raw `node`, or their lockfiles. Lockfile is `bun.lock`.
 - TypeScript is typecheck-only (`"noEmit": true`); Bun handles transpilation.
+- No test files, no lint/format, no CI. Don't invent them.
 
 ## Commands
 
@@ -21,69 +22,70 @@ Compact repo guidance. Add to it when you discover something a future agent woul
 | Prod serve | `bun start` (sets `NODE_ENV=production`) |
 | Typecheck | `bunx tsc --noEmit` |
 | Add dep | `bun add <pkg>` · `bun add -d <pkg>` |
-
-No `bun test` files, no lint/format, no CI. Don't invent them.
+| Add shadcn component | `bunx --bun shadcn@latest add <name> --yes` |
 
 ## HMR
 
 - Edits to `src/index.ts` **restart the server** — all live WS/SSE/polling connections drop.
 - Edits anywhere else HMR-update the React tree; client state is preserved.
+- React HMR root (`src/frontend.tsx`) uses `import.meta.hot.data` to reuse `createRoot` across hot reloads. Agent may reach for Vite-style `hot.accept` instead.
 
 ## Architecture
 
-- **`src/index.ts`** — single `Bun.serve` entry; all routes live here. Uses the hybrid form: `routes: { "/": index }` for the HTML route + a `fetch(req, server)` fallback for API routes. `development.hmr` is on when `NODE_ENV !== "production"`.
-- **`src/index.html`** is imported via Bun's HTML-import bundler (line `import index from "./index.html"`). It references `./frontend.tsx` as a `<script>` tag. Bun follows the JS/TS import graph from there; `build.ts` scans for `*.html` via `Bun.Glob` as the sole build entrypoints.
-- **Server** code under `src/server/`: `ticker.ts` (250ms interval, random-walk, two modes), `sse.ts` (ReadableStream SSE with retry hint), `ws.ts` (Bun WebSocket handlers with WeakMap unsubscription).
-- **Client** code under `src/components/`, `src/hooks/`, `src/lib/`. The `@/*` path alias works for both server and client.
-- **Transports** (`src/lib/transports/types.ts`): `Transport` interface = `subscribe(cb) → unsubscribe()`, `onStatusChange(cb)`, `destroy()`. Three factories: `createPollingTransport` (setInterval/fetch), `createWebSocketTransport` (Bun WS), `createSSETransport` (EventSource).
-- **`useTransport` hook** manages snapshot, latency, update count, data points ring buffer (60), requests sent, reconnect count, current interval, status.
-- **`useDataSource` hook** calls `POST /api/snapshot { mode }` to switch server ticker mode.
-- **`src/index.ts` routes**: `GET /api/snapshot` (JSON), `POST /api/snapshot` (mode switch), `GET /api/stream/sse` (SSE stream), `GET /api/stream/ws` (WebSocket upgrade). No router library.
-- **Three panels** (`PollingPanel`, `WebSocketPanel`, `SSEPanel`) in a 3-col grid (`Dashboard.tsx`). Visually identical; only behaviours differ.
-- **Data flow**: Server ticker runs at 250ms → all three transports consume the same `ticker.latest()` / `ticker.onTick` → panels show identical data at the same moment.
+- **`src/index.ts`** — single `Bun.serve` entry; all routes live here. Hybrid form: `routes: { "/": index }` for HTML + a `fetch(req, server)` fallback for API routes. `development.hmr` is on when `NODE_ENV !== "production"`.
+- **Kill-server guard**: A `killed` boolean guards all data routes. When adding a new route that serves data or streams, **it must also check `if (killed) return new Response("Server killed", { status: 503 })`** or the transport will appear "Live" after kill.
+- **`src/index.html`** is imported via Bun's HTML-import bundler (`import index from "./index.html"`). It references `./frontend.tsx` as a `<script>` tag. Bun follows the JS/TS import graph from there; `build.ts` scans for `*.html` via `Bun.Glob` as the sole build entrypoints.
+- **Server** code under `src/server/`: `ticker.ts` (250ms interval, random-walk + system modes), `sse.ts` (ReadableStream SSE with retry hint), `ws.ts` (Bun WebSocket handlers with WeakMap unsubscription).
+- **Three transports** (`src/lib/transports/`): `polling.ts`, `websocket.ts`, `sse.ts`, plus `shared.ts` for extracted reconnect helpers (`createReconnectState`, `scheduleReconnect`, `cancelReconnect`, `manualReconnect`). All implement `Transport` interface (`subscribe → unsubscribe`, `onStatusChange`, `destroy`). WS and SSE share the same app-level auto-reconnect pattern (2s delay, reconnect-on-disconnect). Polling has no reconnect.
+- **`useTransport` hook** (kind: `"polling" | "websocket" | "sse"`) manages snapshot, status, latency, update count, reconnect count, bytes transferred, and a 60-point data ring buffer. Uses a single `transportRef` (union type with optional `setInterval`/`reconnect`). Returns `reconnect()` for WS/SSE and `setPollingInterval()` for polling.
+- **Single `TransportPanel`** (`src/components/panels/TransportPanel.tsx`) with `kind` prop renders all three transports. Used 3× in `Dashboard.tsx` inside a `grid-cols-3` layout. Shows `primaryValue(primaryUnit)` from `lib/utils.ts`. When mode is `"system"`, extra metric rows appear (CPU, RAM, Net In/Out).
+- **Data flow**: Server ticker runs at 250ms → all three transports consume `ticker.latest()` / `ticker.onTick` → panels show identical data at the same moment.
+- **`src/index.ts` routes**: `GET /api/snapshot` (JSON), `POST /api/snapshot` (mode switch), `GET /api/stream/sse` (SSE, with `server.timeout(req, 0)` to prevent Bun idle timeout), `GET /api/stream/ws` (WebSocket upgrade), `POST /api/kill`, `POST /api/respawn` (both enforce POST, reject other methods with 405). No router library.
+- **Kill state** is lifted to `App.tsx` and passed as `serverKilled` prop → `Dashboard` → `TransportPanel`. `KillServerButton` is a controlled component (`killed` + `onToggle` props) that POSTs to `/api/kill` or `/api/respawn`.
 
 ## Styling
 
 - **`styles/globals.css`** — shadcn theme tokens + `@import "tailwindcss"`, `@import "tw-animate-css"`, `@import "shadcn/tailwind.css"`. Generated by shadcn; don't hand-edit unless you mean to.
-- **`src/index.css`** — app-level `@layer base` styles. Its first line `@import "../styles/globals.css";` is mandatory. Must be imported in JS (currently done in `src/frontend.tsx:1`).
-- Tailwind v4 is wired through `bun-plugin-tailwind` (registered in `bunfig.toml` `[serve.static] plugins`). No PostCSS, no `tailwind.config.js`.
-- `build.ts` **re-registers** `bun-plugin-tailwind` itself for `Bun.build`. If you add or change a build-time plugin, update both `bunfig.toml` and `build.ts` — they're independent.
+- **`src/index.css`** — app-level `@layer base` styles. Its first line `@import "../styles/globals.css";` is mandatory. Must be imported in JS (done in `src/frontend.tsx:1`).
+- Tailwind v4 wired through `bun-plugin-tailwind` (registered in `bunfig.toml` `[serve.static] plugins` and re-registered in `build.ts` for `Bun.build`). No PostCSS, no `tailwind.config.js`.
+- If you change a build-time plugin, update both `bunfig.toml` and `build.ts`.
 
 ## Path alias & env
 
-- `@/*` → `./src/*` (`tsconfig.json` `paths`). Use the alias, not `../../`. Both `.ts` and `.tsx` extensions are valid. The alias is shared — server code uses it too.
-- `bunfig.toml` exposes only env vars prefixed `BUN_PUBLIC_*` to the client. Anything else stays server-side.
+- `@/*` → `./src/*`. Use the alias, not `../../`. Works for both server and client code.
+- Only `BUN_PUBLIC_*` env vars are exposed to the client (`bunfig.toml`).
 
 ## shadcn
 
-- `components.json`: `style: "base-nova"`, `baseColor: "neutral"`, `iconLibrary: "lucide"`, `cssVariables: true`, RSC off.
-- Add with `bunx --bun shadcn@latest add <name> --yes` → lands in `src/components/ui/`.
-- **All primitives come from `@base-ui/react/<name>`** (Base UI, not Radix). No radix-ui deps remain.
-- Three implementation patterns in `src/components/ui/`:
+- `components.json`: `style: "base-nova"`, `baseColor: "neutral"`, `iconLibrary: "lucide"`, `cssVariables: true`, RSC off, `registries: {}`.
+- All primitives come from `@base-ui/react/<name>` (Base UI, not Radix).
+- Three patterns in `src/components/ui/`:
   - **Base UI primitive + cva** — interactive controls: `button`, `input`, `select`, `separator`, `toggle`, `toggle-group`, `tooltip`.
-  - **`useRender` + `mergeProps`** — plain elements that need variant control: `badge`.
-  - **Plain React + cva** — non-interactive presentation: `card`, `label`, `textarea`.
-- Every component sets a `data-slot` attribute on its root element; use it as the styling hook.
-- `<Tooltip>` needs a `<TooltipProvider>` near the React root.
+  - **`useRender` + `mergeProps`** — variant control for plain elements: `badge`.
+  - **Plain React + cva** — non-interactive: `card`, `label`, `textarea`.
+- Every component sets a `data-slot` attribute on its root element.
+- `<Tooltip>` needs a `<TooltipProvider>` near the React root (in `App.tsx`).
 
 ## Dark mode
 
-- **`next-themes`** handles theme management (`src/App.tsx` wraps in `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>`). The `.dark` class is toggled on `<html>`, which matches the `@custom-variant dark` in `styles/globals.css`.
-- **`ModeToggle`** (`src/components/controls/ModeToggle.tsx`) uses the existing Base UI `Button` + `Tooltip` (no Radix dropdown). Cycles light → dark → system on click, shows a Sun/Moon icon based on `resolvedTheme`, and displays current/next in the tooltip. Renders a disabled placeholder before mount to avoid hydration mismatch.
-- To add a new theme toggle elsewhere, import `useTheme` from `next-themes` and call `setTheme`.
+- `next-themes` `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>` in `src/App.tsx`. `.dark` class on `<html>`, matches `@custom-variant dark` in `styles/globals.css`.
+- `ModeToggle` cycles light→dark→system via Base UI `Button` + `Tooltip`.
 
-## TypeScript (`tsconfig.json`)
+## TypeScript
 
-- `lib: ["ESNext", "DOM", "DOM.Iterable"]` — DOM is included (React needs it); DOM.Iterable is needed for `...new Set()` etc.
-- `verbatimModuleSyntax: true` → type-only imports must use `import type { ... }`.
-- `noUncheckedIndexedAccess: true` → array/record reads return `T | undefined`; guard them (the sparkline ring buffer will hit this).
-- `noImplicitOverride: true`, `noFallthroughCasesInSwitch: true` — on; small but real.
-- `module: "Preserve"` + `moduleResolution: "bundler"` + `allowImportingTsExtensions: true` → Bun-bundler mode; `.ts`/`.tsx` extension imports are fine.
+- `lib: ["ESNext", "DOM", "DOM.Iterable"]`, `module: "Preserve"` + `moduleResolution: "bundler"` + `allowImportingTsExtensions: true` — Bun-bundler mode.
+- `verbatimModuleSyntax: true` → type-only imports must use `import type`.
+- `noUncheckedIndexedAccess: true` → array reads return `T | undefined` (sparkline ring buffer hits this).
 - **Off** (don't re-enable): `noUnusedLocals`, `noUnusedParameters`, `noPropertyAccessFromIndexSignature`.
 
 ## Code style
 
-- **Arrow functions for new app code.** `const name = (...args) => ...` for top-level functions, callbacks, and React components. No `function` declarations/expressions.
-- The shadcn-generated files in `src/components/ui/` (and `src/lib/utils.ts`) use `function` declarations by design — don't rewrite them.
-- React components: `const Panel = () => { ... }`. Export both named and default if the entry (`App.tsx`) does.
-- `package.json` `name` is `three-windows`.
+- **Arrow functions for app code.** `const name = (...args) => ...` for top-level functions, callbacks, and React components. No `function` declarations/expressions.
+- shadcn-generated files (`src/components/ui/`, `src/lib/utils.ts`) use `function` declarations — don't rewrite them.
+
+## Gotchas
+
+- **TS2882** for `src/frontend.tsx` importing `./index.css` is expected — Bun handles CSS imports directly; TS doesn't understand them. Don't try to fix it.
+- **SSE auto-reconnect vs. server kill**: SSE has app-level reconnect (same as WS). After kill, browser `EventSource` receives a 503 from the route guard and its `onerror` fires → SSE transport closes the EventSource and schedules reconnect. The browser never reconnects on its own because we close it on error.
+- **No custom registries in shadcn**: `components.json` has `registries: {}`. Components come from `@shadcn` default registry.
+- **`primaryValue`/`primaryUnit`** are in `src/lib/utils.ts`, not duplicated per panel — add new snapshot fields there.

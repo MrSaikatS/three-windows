@@ -1,11 +1,26 @@
 import type { Ticker } from "./ticker.ts";
 import type { Snapshot } from "@/types";
 
+const abortControllers = new Set<AbortController>();
+
 export const sseResponse = (ticker: Ticker): Response => {
+  const ac = new AbortController();
+  abortControllers.add(ac);
+
   let unsubscribe: (() => void) | null = null;
 
   const stream = new ReadableStream({
     start(controller) {
+      ac.signal.addEventListener("abort", () => {
+        try {
+          controller.close();
+        } catch {
+          // Stream may already be closed
+        }
+        unsubscribe?.();
+        abortControllers.delete(ac);
+      }, { once: true });
+
       controller.enqueue(new TextEncoder().encode("retry: 1000\n\n"));
       unsubscribe = ticker.onTick((snapshot: Snapshot) => {
         try {
@@ -17,6 +32,7 @@ export const sseResponse = (ticker: Ticker): Response => {
     },
     cancel() {
       unsubscribe?.();
+      abortControllers.delete(ac);
     },
   });
 
@@ -27,4 +43,11 @@ export const sseResponse = (ticker: Ticker): Response => {
       Connection: "keep-alive",
     },
   });
+};
+
+export const cleanupSse = () => {
+  for (const ac of [...abortControllers]) {
+    ac.abort();
+  }
+  abortControllers.clear();
 };

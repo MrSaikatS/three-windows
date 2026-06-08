@@ -1,12 +1,24 @@
 import type { Snapshot } from "@/types";
+import {
+  cancelReconnect,
+  clearManualReconnect,
+  createReconnectState,
+  manualReconnect,
+  scheduleReconnect,
+  type ReconnectState,
+} from "./shared.ts";
 import type { Transport, TransportStatus } from "./types.ts";
 
 export const createSSETransport = (): Transport & {
-  onStatusChange: (cb: ((status: TransportStatus) => void) | null) => void;
+  reconnect: () => void;
+  getReconnectCount: () => number;
+  getBytesTransferred: () => number;
 } => {
   let es: EventSource | null = null;
+  let bytesTransferred = 0;
   let subscribers = new Set<(s: Snapshot) => void>();
   let statusCallback: ((status: TransportStatus) => void) | null = null;
+  const rc: ReconnectState = createReconnectState();
 
   const setStatus = (status: TransportStatus) => {
     statusCallback?.(status);
@@ -15,19 +27,36 @@ export const createSSETransport = (): Transport & {
   const connect = () => {
     setStatus("connecting");
     es = new EventSource("/api/stream/sse");
-    es.onmessage = (e) => {
+    es.onopen = () => {
       setStatus("connected");
+      clearManualReconnect(rc);
+    };
+    es.onmessage = (e) => {
       try {
         const snapshot: Snapshot = JSON.parse(e.data as string);
+        bytesTransferred += (e.data as string).length + 8;
         for (const cb of subscribers) cb(snapshot);
-      } catch { /* skip malformed */ }
+      } catch {
+        /* skip malformed */
+      }
     };
     es.onerror = () => {
+      es?.close();
+      es = null;
       setStatus("disconnected");
+      scheduleReconnect(rc, connect, () => subscribers.size > 0);
+      clearManualReconnect(rc);
     };
   };
 
   return {
+    reconnect() {
+      es?.close();
+      es = null;
+      manualReconnect(rc, connect);
+    },
+    getReconnectCount: () => rc.reconnectCount,
+    getBytesTransferred: () => bytesTransferred,
     onStatusChange(cb) {
       statusCallback = cb;
     },
@@ -37,6 +66,7 @@ export const createSSETransport = (): Transport & {
       return () => {
         subscribers.delete(cb);
         if (subscribers.size === 0) {
+          cancelReconnect(rc);
           es?.close();
           es = null;
         }
@@ -44,6 +74,7 @@ export const createSSETransport = (): Transport & {
     },
     destroy() {
       subscribers.clear();
+      cancelReconnect(rc);
       es?.close();
       es = null;
     },

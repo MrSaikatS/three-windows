@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
 import type { Mode } from "@/types";
+import { useCallback, useState } from "react";
 
 export const useDataSource = (initial: Mode = "ticker") => {
   const [mode, setMode] = useState<Mode>(initial);

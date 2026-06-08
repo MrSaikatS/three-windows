@@ -25,5 +25,8 @@
     "@types/react-dom": "^19.2.3",
     "@types/bun": "latest",
     "tailwindcss": "^4.3.0"
-  }
+  },
+  "author": "Saikat Sardar",
+  "license": "MIT",
+  "homepage": "https://github.com/MrSaikatS/three-windows#readme"
 }
