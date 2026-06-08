@@ -17,9 +17,9 @@ const App = () => {
       defaultTheme="system"
       enableSystem>
       <TooltipProvider>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background space-y-2">
           {/* Top header bar */}
-          <header className="sticky top-0 z-10 border-b border-border/40 bg-background/80 backdrop-blur-xl backdrop-saturate-150">
+          <header className="sticky top-0 z-10 border-b border-border/40 bg-background/80 backdrop-blur-xl backdrop-saturate-150 pt-4">
             <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
               <div className="flex items-center gap-3">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">

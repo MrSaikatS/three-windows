@@ -9,7 +9,7 @@ const MAX_SPARKLINE = 60;
 
 type WithPolling = Transport & { setInterval: (ms: number) => void; getRequestsSent: () => number; getBytesTransferred: () => number };
 type WithWs = Transport & { reconnect: () => void; getReconnectCount: () => number; getBytesTransferred: () => number };
-type WithSse = Transport & { getBytesTransferred: () => number };
+type WithSse = Transport & { reconnect: () => void; getReconnectCount: () => number; getBytesTransferred: () => number };
 
 export const useTransport = (kind: "polling" | "websocket" | "sse", initialInterval = 1000) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -22,6 +22,7 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
   const [currentInterval, setCurrentInterval] = useState(initialInterval);
   const pollingRef = useRef<WithPolling | null>(null);
   const wsRef = useRef<WithWs | null>(null);
+  const sseRef = useRef<WithSse | null>(null);
 
   const pushDataPoint = useCallback((s: Snapshot) => {
     const val = s.mode === "ticker" ? s.value : s.cpu;
@@ -63,14 +64,16 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
 
     if (kind === "sse") {
       const sse = createSSETransport();
+      sseRef.current = sse;
       sse.onStatusChange(setStatus);
       const unsub = sse.subscribe((s) => {
         setSnapshot(s);
         setUpdateCount((c) => c + 1);
+        setReconnectCount(sse.getReconnectCount());
         setBytesTransferred(sse.getBytesTransferred());
         pushDataPoint(s);
       });
-      return () => { unsub(); sse.destroy(); };
+      return () => { unsub(); sse.destroy(); sseRef.current = null; };
     }
   }, [kind, initialInterval, pushDataPoint]);
 
@@ -83,6 +86,9 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
     if (wsRef.current) {
       wsRef.current.reconnect();
       setReconnectCount(wsRef.current.getReconnectCount());
+    } else if (sseRef.current) {
+      sseRef.current.reconnect();
+      setReconnectCount(sseRef.current.getReconnectCount());
     }
   }, []);
 

@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card.tsx";
+import { cn } from "@/lib/utils";
+import { Radio, RefreshCw, Zap } from "lucide-react";
+import type { ReactNode } from "react";
 import type { TransportKind } from "./transport-meta.ts";
 import { TRANSPORT_META } from "./transport-meta.ts";
-import { cn } from "@/lib/utils";
-import { RefreshCw, Zap, Radio } from "lucide-react";
 
 interface PanelShellProps {
   kind: TransportKind;
@@ -25,11 +25,12 @@ const PanelShell = ({ kind, children, status, footer }: PanelShellProps) => {
       className={cn(
         "group flex flex-col border-0 shadow-sm ring-1 ring-foreground/5",
       )}
-      style={{
-        "--accent": meta.color,
-        "--accent-dark": meta.darkColor,
-      } as React.CSSProperties}
-    >
+      style={
+        {
+          "--accent": meta.color,
+          "--accent-dark": meta.darkColor,
+        } as React.CSSProperties
+      }>
       {/* Accent bar */}
       <div
         className="h-1 w-full rounded-t-xl"
@@ -46,8 +47,7 @@ const PanelShell = ({ kind, children, status, footer }: PanelShellProps) => {
             style={{
               backgroundColor: `color-mix(in oklch, var(--accent), transparent 88%)`,
               color: `var(--accent)`,
-            }}
-          >
+            }}>
             {ICONS[kind]}
           </span>
           <div>
@@ -66,11 +66,7 @@ const PanelShell = ({ kind, children, status, footer }: PanelShellProps) => {
         {children}
       </CardContent>
 
-      {footer && (
-        <CardFooter className="px-5 py-2.5">
-          {footer}
-        </CardFooter>
-      )}
+      {footer && <CardFooter className="px-5 py-2.5">{footer}</CardFooter>}
     </Card>
   );
 };
