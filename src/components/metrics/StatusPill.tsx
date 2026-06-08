@@ -6,7 +6,10 @@ interface StatusPillProps {
   className?: string;
 }
 
-const STYLES: Record<TransportStatus, { dot: string; bg: string; text: string; label: string }> = {
+const STYLES: Record<
+  TransportStatus,
+  { dot: string; bg: string; text: string; label: string }
+> = {
   connected: {
     dot: "bg-emerald-500 shadow-[0_0_0_3px_oklch(0.98_0.05_155)] dark:shadow-[0_0_0_3px_oklch(0.28_0.06_155)]",
     bg: "bg-emerald-50 dark:bg-emerald-950/40",
@@ -36,8 +39,7 @@ const StatusPill = ({ status, className }: StatusPillProps) => {
         s.bg,
         s.text,
         className,
-      )}
-    >
+      )}>
       <span className={cn("size-1.5 rounded-full", s.dot)} />
       {s.label}
     </span>

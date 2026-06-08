@@ -10,7 +10,7 @@ interface SparklineProps {
 
 const Sparkline = ({
   data,
-  width = 120,
+  width = 300,
   height = 32,
   strokeColor = "currentColor",
   gradientId = "spark-fill",
@@ -28,13 +28,14 @@ const Sparkline = ({
     });
 
     const line = points
-      .map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+      .map(
+        (p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`,
+      )
       .join("");
 
     const first = points[0];
     const last = points[points.length - 1];
-    const area =
-      `${line}L${last!.x.toFixed(1)},${height - 1}L${first!.x.toFixed(1)},${height - 1}Z`;
+    const area = `${line}L${last!.x.toFixed(1)},${height - 1}L${first!.x.toFixed(1)},${height - 1}Z`;
 
     return { line, area };
   }, [data, width, height]);
@@ -46,12 +47,24 @@ const Sparkline = ({
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      className="overflow-visible"
-    >
+      className="overflow-visible">
       <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={strokeColor} stopOpacity={0.3} />
-          <stop offset="100%" stopColor={strokeColor} stopOpacity={0.02} />
+        <linearGradient
+          id={gradientId}
+          x1="0"
+          y1="0"
+          x2="0"
+          y2="1">
+          <stop
+            offset="0%"
+            stopColor={strokeColor}
+            stopOpacity={0.3}
+          />
+          <stop
+            offset="100%"
+            stopColor={strokeColor}
+            stopOpacity={0.02}
+          />
         </linearGradient>
       </defs>
       <path

@@ -15,14 +15,19 @@ const colorForLatency = (ms: number) => {
 
 const LatencyBadge = ({ latency }: LatencyBadgeProps) => {
   if (latency === null)
-    return <Badge variant="outline" className="font-mono">—</Badge>;
+    return (
+      <Badge
+        variant="outline"
+        className="font-mono">
+        —
+      </Badge>
+    );
   return (
     <Badge
       className={cn(
         "font-mono text-[11px] font-semibold tracking-tight px-1.5 py-0",
         colorForLatency(latency),
-      )}
-    >
+      )}>
       {latency}ms
     </Badge>
   );

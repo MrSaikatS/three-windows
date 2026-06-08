@@ -21,13 +21,18 @@ const KillServerButton = ({ killed, onToggle }: KillServerButtonProps) => (
           size="icon"
           onClick={onToggle}
         />
-      }
-    >
-      {killed ? <Power className="size-4" /> : <PowerOff className="size-4" />}
-      <span className="sr-only">{killed ? "Respawn server" : "Kill server"}</span>
+      }>
+      {killed ?
+        <Power className="size-4" />
+      : <PowerOff className="size-4" />}
+      <span className="sr-only">
+        {killed ? "Respawn server" : "Kill server"}
+      </span>
     </TooltipTrigger>
     <TooltipContent>
-      {killed ? "Respawn server ticker" : "Kill server (stop ticker, close WS/SSE)"}
+      {killed ?
+        "Respawn server ticker"
+      : "Kill server (stop ticker, close WS/SSE)"}
     </TooltipContent>
   </Tooltip>
 );

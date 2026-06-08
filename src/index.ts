@@ -1,7 +1,7 @@
 import index from "./index.html";
-import { sseResponse, cleanupSse } from "./server/sse.ts";
+import { cleanupSse, sseResponse } from "./server/sse.ts";
 import { ticker } from "./server/ticker.ts";
-import { wsHandlers, cleanupWs } from "./server/ws.ts";
+import { cleanupWs, wsHandlers } from "./server/ws.ts";
 
 let killed = false;
 
@@ -37,7 +37,8 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/kill") {
-      if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+      if (req.method !== "POST")
+        return new Response("Method not allowed", { status: 405 });
       killed = true;
       ticker.stop();
       cleanupSse();
@@ -46,7 +47,8 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/respawn") {
-      if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+      if (req.method !== "POST")
+        return new Response("Method not allowed", { status: 405 });
       killed = false;
       ticker.start();
       return new Response("Respawned", { status: 200 });

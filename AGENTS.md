@@ -28,6 +28,7 @@ Compact repo guidance. Add to it when you discover something a future agent woul
 
 - Edits to `src/index.ts` **restart the server** — all live WS/SSE/polling connections drop.
 - Edits anywhere else HMR-update the React tree; client state is preserved.
+- React HMR root (`src/frontend.tsx`) uses `import.meta.hot.data` to reuse `createRoot` across hot reloads. Agent may reach for Vite-style `hot.accept` instead.
 
 ## Architecture
 
@@ -39,7 +40,7 @@ Compact repo guidance. Add to it when you discover something a future agent woul
 - **`useTransport` hook** (kind: `"polling" | "websocket" | "sse"`) manages snapshot, status, latency, update count, reconnect count, bytes transferred, and a 60-point data ring buffer. Uses a single `transportRef` (union type with optional `setInterval`/`reconnect`). Returns `reconnect()` for WS/SSE and `setPollingInterval()` for polling.
 - **Single `TransportPanel`** (`src/components/panels/TransportPanel.tsx`) with `kind` prop renders all three transports. Used 3× in `Dashboard.tsx` inside a `grid-cols-3` layout. Shows `primaryValue(primaryUnit)` from `lib/utils.ts`. When mode is `"system"`, extra metric rows appear (CPU, RAM, Net In/Out).
 - **Data flow**: Server ticker runs at 250ms → all three transports consume `ticker.latest()` / `ticker.onTick` → panels show identical data at the same moment.
-- **`src/index.ts` routes**: `GET /api/snapshot` (JSON), `POST /api/snapshot` (mode switch), `GET /api/stream/sse` (SSE), `GET /api/stream/ws` (WebSocket upgrade), `POST /api/kill`, `POST /api/respawn` (both enforce POST, reject other methods with 405). No router library.
+- **`src/index.ts` routes**: `GET /api/snapshot` (JSON), `POST /api/snapshot` (mode switch), `GET /api/stream/sse` (SSE, with `server.timeout(req, 0)` to prevent Bun idle timeout), `GET /api/stream/ws` (WebSocket upgrade), `POST /api/kill`, `POST /api/respawn` (both enforce POST, reject other methods with 405). No router library.
 - **Kill state** is lifted to `App.tsx` and passed as `serverKilled` prop → `Dashboard` → `TransportPanel`. `KillServerButton` is a controlled component (`killed` + `onToggle` props) that POSTs to `/api/kill` or `/api/respawn`.
 
 ## Styling

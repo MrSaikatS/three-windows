@@ -8,7 +8,7 @@ const randomWalk = (current: number, step: number, lo: number, hi: number) =>
   clamp(current + (Math.random() * 2 - 1) * step, lo, hi);
 
 const buildSnapshot = (mode: Mode, prev: Snapshot | null): Snapshot => {
-  const ts = performance.now();
+  const ts = Date.now();
   if (mode === "ticker") {
     const value = prev && prev.mode === "ticker" ? randomWalk(prev.value, 0.5, 1, 1000) : 100;
     return { mode: "ticker", value, ts };

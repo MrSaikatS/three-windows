@@ -25,7 +25,7 @@ const App = () => {
       defaultTheme="system"
       enableSystem>
       <TooltipProvider>
-        <div className="min-h-screen bg-background space-y-2">
+        <div className="min-h-[90dvh] bg-background space-y-2">
           {/* Top header bar */}
           <header className="sticky top-0 z-10 border-b border-border/40 bg-background/80 backdrop-blur-xl backdrop-saturate-150 pt-4">
             <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
@@ -76,7 +76,7 @@ const App = () => {
           </div>
 
           {/* Dashboard panels */}
-          <main className="mx-auto max-w-7xl px-6 pb-12">
+          <main className="mx-auto max-w-7xl px-6 pb-4">
             <Dashboard serverKilled={killed} />
           </main>
         </div>

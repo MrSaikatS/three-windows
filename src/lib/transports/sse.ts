@@ -1,12 +1,12 @@
 import type { Snapshot } from "@/types";
-import type { Transport, TransportStatus } from "./types.ts";
 import {
-  createReconnectState,
-  scheduleReconnect,
   cancelReconnect,
+  createReconnectState,
   manualReconnect,
+  scheduleReconnect,
   type ReconnectState,
 } from "./shared.ts";
+import type { Transport, TransportStatus } from "./types.ts";
 
 export const createSSETransport = (): Transport & {
   reconnect: () => void;
@@ -32,13 +32,16 @@ export const createSSETransport = (): Transport & {
         const snapshot: Snapshot = JSON.parse(e.data as string);
         bytesTransferred += (e.data as string).length + 8;
         for (const cb of subscribers) cb(snapshot);
-      } catch { /* skip malformed */ }
+      } catch {
+        /* skip malformed */
+      }
     };
     es.onerror = () => {
       es?.close();
       es = null;
       setStatus("disconnected");
-      if (!rc.manualReconnect) scheduleReconnect(rc, connect, () => subscribers.size > 0);
+      if (!rc.manualReconnect)
+        scheduleReconnect(rc, connect, () => subscribers.size > 0);
     };
   };
 

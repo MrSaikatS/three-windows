@@ -20,7 +20,10 @@ const StaleByBadge = ({ latency }: StaleByBadgeProps) => {
     <div className="flex items-center gap-2">
       <div className="h-2 w-16 overflow-hidden rounded-full bg-muted">
         <div
-          className={cn("h-full rounded-full transition-all", staleByColor(latency))}
+          className={cn(
+            "h-full rounded-full transition-all",
+            staleByColor(latency),
+          )}
           style={{ width: `${pct}%` }}
         />
       </div>

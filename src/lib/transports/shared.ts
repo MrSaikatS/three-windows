@@ -33,10 +33,7 @@ export const cancelReconnect = (state: ReconnectState) => {
   }
 };
 
-export const manualReconnect = (
-  state: ReconnectState,
-  connect: () => void,
-) => {
+export const manualReconnect = (state: ReconnectState, connect: () => void) => {
   state.manualReconnect = true;
   cancelReconnect(state);
   state.reconnectCount++;

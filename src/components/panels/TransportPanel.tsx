@@ -1,13 +1,24 @@
 import { LatencyBadge } from "@/components/metrics/LatencyBadge.tsx";
+import { LatencyBar } from "@/components/metrics/LatencyBar.tsx";
 import { MetricRow } from "@/components/metrics/MetricRow.tsx";
 import { Sparkline } from "@/components/metrics/Sparkline.tsx";
 import { StaleByBadge } from "@/components/metrics/StaleByBadge.tsx";
 import { StatusPill } from "@/components/metrics/StatusPill.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { useTransport } from "@/hooks/useTransport.ts";
-import { formatBytes, primaryValue, primaryUnit } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import { ArrowLeftRight, Gauge, HardDrive, Layers, Cpu, Download, RotateCw, Upload, Wifi } from "lucide-react";
+import { formatBytes, primaryUnit, primaryValue } from "@/lib/utils";
+import {
+  Activity,
+  ArrowLeftRight,
+  BarChart3,
+  Cpu,
+  Download,
+  Gauge,
+  HardDrive,
+  Layers,
+  Upload,
+  Wifi,
+} from "lucide-react";
 import { PanelShell } from "./PanelShell.tsx";
 import { TRANSPORT_META, type TransportKind } from "./transport-meta.ts";
 
@@ -17,13 +28,19 @@ interface TransportPanelProps {
   serverKilled?: boolean;
 }
 
-const TransportPanel = ({ kind, initialInterval, serverKilled }: TransportPanelProps) => {
+const TransportPanel = ({
+  kind,
+  initialInterval,
+  serverKilled,
+}: TransportPanelProps) => {
   const {
     snapshot,
     status,
     latency,
     updateCount,
     bytesTransferred,
+    jitterMs,
+    latencyBuckets,
     dataPoints,
   } = useTransport(kind, initialInterval);
 
@@ -73,17 +90,23 @@ const TransportPanel = ({ kind, initialInterval, serverKilled }: TransportPanelP
         value={formatBytes(bytesTransferred)}
         icon={<HardDrive className="size-3" />}
       />
+      <MetricRow
+        label="Jitter"
+        value={<span className="font-mono text-xs">±{jitterMs}ms</span>}
+        icon={<Activity className="size-3" />}
+      />
+      <MetricRow
+        label="Delivery"
+        value={<LatencyBar buckets={latencyBuckets} />}
+        icon={<BarChart3 className="size-3" />}
+      />
 
       <MetricRow
         label="Direction"
         value={TRANSPORT_META[kind].directionLabel}
         icon={<ArrowLeftRight className="size-3" />}
       />
-      <MetricRow
-        label="Reconnect"
-        value={TRANSPORT_META[kind].reconnectLabel}
-        icon={<RotateCw className="size-3" />}
-      />
+
       <MetricRow
         label="Protocol"
         value={TRANSPORT_META[kind].protocolLabel}
@@ -117,7 +140,7 @@ const TransportPanel = ({ kind, initialInterval, serverKilled }: TransportPanelP
       )}
 
       {dataPoints.length > 1 && (
-        <div className="pt-1">
+        <div className="pt-1 grid place-items-center">
           <Sparkline
             data={dataPoints}
             strokeColor={TRANSPORT_META[kind].color}
