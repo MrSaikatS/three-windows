@@ -3,6 +3,8 @@ import { sseResponse, cleanupSse } from "./server/sse.ts";
 import { ticker } from "./server/ticker.ts";
 import { wsHandlers, cleanupWs } from "./server/ws.ts";
 
+let killed = false;
+
 const server = Bun.serve({
   port: 3000,
   routes: {
@@ -12,6 +14,7 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/api/snapshot") {
+      if (killed) return new Response("Server killed", { status: 503 });
       if (req.method === "POST") {
         const body = (await req.clone().json()) as { mode?: string };
         if (body.mode === "ticker" || body.mode === "system") {
@@ -22,16 +25,19 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/stream/sse") {
+      if (killed) return new Response("Server killed", { status: 503 });
       server.timeout(req, 0);
       return sseResponse(ticker);
     }
 
     if (url.pathname === "/api/stream/ws") {
+      if (killed) return new Response("Server killed", { status: 503 });
       const ok = server.upgrade(req);
       if (ok) return;
     }
 
     if (url.pathname === "/api/kill") {
+      killed = true;
       ticker.stop();
       cleanupSse();
       cleanupWs();
@@ -39,6 +45,7 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/respawn") {
+      killed = false;
       ticker.start();
       return new Response("Respawned", { status: 200 });
     }

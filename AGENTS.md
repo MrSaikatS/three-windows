@@ -32,6 +32,7 @@ No `bun test` files, no lint/format, no CI. Don't invent them.
 ## Architecture
 
 - **`src/index.ts`** — single `Bun.serve` entry; all routes live here. Uses the hybrid form: `routes: { "/": index }` for the HTML route + a `fetch(req, server)` fallback for API routes. `development.hmr` is on when `NODE_ENV !== "production"`.
+- **Kill-server guard**: A `killed` boolean (line 6) guards three data routes. When adding a new route that serves data or streams, **it must also check `if (killed) return new Response("Server killed", { status: 503 })`** or the transport will appear "Live" after kill.
 - **`src/index.html`** is imported via Bun's HTML-import bundler (line `import index from "./index.html"`). It references `./frontend.tsx` as a `<script>` tag. Bun follows the JS/TS import graph from there; `build.ts` scans for `*.html` via `Bun.Glob` as the sole build entrypoints.
 - **Server** code under `src/server/`: `ticker.ts` (250ms interval, random-walk, two modes), `sse.ts` (ReadableStream SSE with retry hint), `ws.ts` (Bun WebSocket handlers with WeakMap unsubscription).
 - **Client** code under `src/components/`, `src/hooks/`, `src/lib/`. The `@/*` path alias works for both server and client.
@@ -68,9 +69,8 @@ No `bun test` files, no lint/format, no CI. Don't invent them.
 
 ## Dark mode
 
-- **`next-themes`** handles theme management (`src/App.tsx` wraps in `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>`). The `.dark` class is toggled on `<html>`, which matches the `@custom-variant dark` in `styles/globals.css`.
-- **`ModeToggle`** (`src/components/controls/ModeToggle.tsx`) uses the existing Base UI `Button` + `Tooltip` (no Radix dropdown). Cycles light → dark → system on click, shows a Sun/Moon icon based on `resolvedTheme`, and displays current/next in the tooltip. Renders a disabled placeholder before mount to avoid hydration mismatch.
-- To add a new theme toggle elsewhere, import `useTheme` from `next-themes` and call `setTheme`.
+- `next-themes` `<ThemeProvider attribute="class" defaultTheme="system" enableSystem>` in `src/App.tsx`. `.dark` class on `<html>`, matches `@custom-variant dark` in `styles/globals.css`.
+- `ModeToggle` uses Base UI `Button` + `Tooltip` (no dropdown). Cycles light→dark→system. Renders disabled placeholder before mount. To add a toggle elsewhere, import `useTheme` from `next-themes` and call `setTheme`.
 
 ## TypeScript (`tsconfig.json`)
 
@@ -86,4 +86,9 @@ No `bun test` files, no lint/format, no CI. Don't invent them.
 - **Arrow functions for new app code.** `const name = (...args) => ...` for top-level functions, callbacks, and React components. No `function` declarations/expressions.
 - The shadcn-generated files in `src/components/ui/` (and `src/lib/utils.ts`) use `function` declarations by design — don't rewrite them.
 - React components: `const Panel = () => { ... }`. Export both named and default if the entry (`App.tsx`) does.
-- `package.json` `name` is `three-windows`.
+
+## Gotchas
+
+- **Typecheck error TS2882** for `src/frontend.tsx` importing `./index.css` is expected — Bun handles CSS imports directly; TS doesn't understand them. Don't try to fix it.
+- **SSE has no app-level reconnect** — unlike WS transport which has `scheduleReconnect`, the SSE transport has none. The browser's native `EventSource` auto-reconnects using the server's `retry: 1000` hint. This means after `cleanupSse()` kills all SSE streams, the browser will reconnect unless the `/api/stream/sse` route rejects with 503 (see kill-server guard above).
+- **`shadcn add` with no registries**: `components.json` has `registries: {}`. Components come from `@shadcn` default registry; no custom registries configured.

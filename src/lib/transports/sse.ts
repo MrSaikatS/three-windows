@@ -17,8 +17,8 @@ export const createSSETransport = (): Transport & {
   const connect = () => {
     setStatus("connecting");
     es = new EventSource("/api/stream/sse");
+    es.onopen = () => setStatus("connected");
     es.onmessage = (e) => {
-      setStatus("connected");
       try {
         const snapshot: Snapshot = JSON.parse(e.data as string);
         bytesTransferred += (e.data as string).length + 8;
