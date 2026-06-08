@@ -5,6 +5,7 @@ node_modules
 out
 dist
 *.tgz
+bun-env.d.ts
 
 # code coverage
 coverage

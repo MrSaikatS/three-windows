@@ -31,6 +31,9 @@ const App = () => {
                   <p className="text-[11px] leading-tight text-muted-foreground">
                     Real-time Transport Comparison
                   </p>
+                  <p className="text-[11px] leading-tight text-muted-foreground">
+                    (HTTP Polling vs WebSocket vs SSE)
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

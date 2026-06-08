@@ -1,4 +1,4 @@
-# three-windows
+# Three Windows - Real-time Transport Comparison (HTTP Polling vs WebSocket vs SSE)
 
 A single-page dashboard with three side-by-side panels (**Polling**, **WebSocket**, **SSE**) all consuming the same simulated data source. The goal is to make the architectural differences between the three transports **visually and measurably obvious** — latency, stale-by, request count, connection state, and reconnect behaviour all exposed as live metrics.
 
