@@ -54,9 +54,9 @@ const PanelShell = ({ kind, children, status, footer }: PanelShellProps) => {
             <h3 className="text-sm font-semibold leading-tight text-foreground">
               {meta.label}
             </h3>
-            <p className="text-[11px] leading-tight text-muted-foreground">
-              {meta.description}
-            </p>
+              <p className="text-[11px] leading-tight text-muted-foreground">
+                {meta.description}
+              </p>
           </div>
         </div>
         {status}

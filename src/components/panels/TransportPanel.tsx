@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator.tsx";
 import { useTransport } from "@/hooks/useTransport.ts";
 import { formatBytes, primaryValue, primaryUnit } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { Gauge, HardDrive, Layers, Cpu, Download, Upload } from "lucide-react";
+import { ArrowLeftRight, Gauge, HardDrive, Layers, Cpu, Download, RotateCw, Upload, Wifi } from "lucide-react";
 import { PanelShell } from "./PanelShell.tsx";
 import { TRANSPORT_META, type TransportKind } from "./transport-meta.ts";
 
@@ -72,6 +72,22 @@ const TransportPanel = ({ kind, initialInterval, serverKilled }: TransportPanelP
         label="Bytes transferred"
         value={formatBytes(bytesTransferred)}
         icon={<HardDrive className="size-3" />}
+      />
+
+      <MetricRow
+        label="Direction"
+        value={TRANSPORT_META[kind].directionLabel}
+        icon={<ArrowLeftRight className="size-3" />}
+      />
+      <MetricRow
+        label="Reconnect"
+        value={TRANSPORT_META[kind].reconnectLabel}
+        icon={<RotateCw className="size-3" />}
+      />
+      <MetricRow
+        label="Protocol"
+        value={TRANSPORT_META[kind].protocolLabel}
+        icon={<Wifi className="size-3" />}
       />
 
       {snapshot?.mode === "system" && (

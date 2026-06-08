@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
 import { ThemeProvider } from "next-themes";
+import { useCallback, useState } from "react";
 
 import { Dashboard } from "@/components/Dashboard.tsx";
 import { DataSourceToggle } from "@/components/controls/DataSourceToggle.tsx";
@@ -28,7 +28,7 @@ const App = () => {
         <div className="min-h-screen bg-background space-y-2">
           {/* Top header bar */}
           <header className="sticky top-0 z-10 border-b border-border/40 bg-background/80 backdrop-blur-xl backdrop-saturate-150 pt-4">
-            <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+            <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
               <div className="flex items-center gap-3">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
                   <Activity className="size-4" />
@@ -60,7 +60,7 @@ const App = () => {
           </header>
 
           {/* Sub-header */}
-          <div className="mx-auto max-w-6xl px-6 pt-6 pb-4">
+          <div className="mx-auto max-w-7xl px-6 pt-6 pb-4">
             <div className="flex items-baseline justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">
@@ -76,7 +76,7 @@ const App = () => {
           </div>
 
           {/* Dashboard panels */}
-          <main className="mx-auto max-w-6xl px-6 pb-12">
+          <main className="mx-auto max-w-7xl px-6 pb-12">
             <Dashboard serverKilled={killed} />
           </main>
         </div>
