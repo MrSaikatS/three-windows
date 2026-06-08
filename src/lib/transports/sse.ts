@@ -1,41 +1,26 @@
 import type { Snapshot } from "@/types";
 import type { Transport, TransportStatus } from "./types.ts";
-
-const RECONNECT_DELAY = 2000;
+import {
+  createReconnectState,
+  scheduleReconnect,
+  cancelReconnect,
+  manualReconnect,
+  type ReconnectState,
+} from "./shared.ts";
 
 export const createSSETransport = (): Transport & {
   reconnect: () => void;
   getReconnectCount: () => number;
   getBytesTransferred: () => number;
-  onStatusChange: (cb: ((status: TransportStatus) => void) | null) => void;
 } => {
   let es: EventSource | null = null;
-  let reconnectCount = 0;
   let bytesTransferred = 0;
   let subscribers = new Set<(s: Snapshot) => void>();
   let statusCallback: ((status: TransportStatus) => void) | null = null;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let manualReconnect = false;
+  const rc: ReconnectState = createReconnectState();
 
   const setStatus = (status: TransportStatus) => {
     statusCallback?.(status);
-  };
-
-  const scheduleReconnect = () => {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (subscribers.size === 0) return;
-    reconnectTimer = setTimeout(() => {
-      reconnectTimer = null;
-      reconnectCount++;
-      connect();
-    }, RECONNECT_DELAY);
-  };
-
-  const cancelReconnect = () => {
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-    }
   };
 
   const connect = () => {
@@ -53,21 +38,17 @@ export const createSSETransport = (): Transport & {
       es?.close();
       es = null;
       setStatus("disconnected");
-      if (!manualReconnect) scheduleReconnect();
+      if (!rc.manualReconnect) scheduleReconnect(rc, connect, () => subscribers.size > 0);
     };
   };
 
   return {
     reconnect() {
-      manualReconnect = true;
-      cancelReconnect();
-      reconnectCount++;
       es?.close();
       es = null;
-      connect();
-      manualReconnect = false;
+      manualReconnect(rc, connect);
     },
-    getReconnectCount: () => reconnectCount,
+    getReconnectCount: () => rc.reconnectCount,
     getBytesTransferred: () => bytesTransferred,
     onStatusChange(cb) {
       statusCallback = cb;
@@ -78,7 +59,7 @@ export const createSSETransport = (): Transport & {
       return () => {
         subscribers.delete(cb);
         if (subscribers.size === 0) {
-          cancelReconnect();
+          cancelReconnect(rc);
           es?.close();
           es = null;
         }
@@ -86,7 +67,7 @@ export const createSSETransport = (): Transport & {
     },
     destroy() {
       subscribers.clear();
-      cancelReconnect();
+      cancelReconnect(rc);
       es?.close();
       es = null;
     },

@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { ThemeProvider } from "next-themes";
 
 import { Dashboard } from "@/components/Dashboard.tsx";
@@ -10,6 +11,13 @@ import { Activity } from "lucide-react";
 
 const App = () => {
   const { mode, toggle } = useDataSource("ticker");
+  const [killed, setKilled] = useState(false);
+
+  const handleKillToggle = useCallback(async () => {
+    const endpoint = killed ? "/api/respawn" : "/api/kill";
+    const res = await fetch(endpoint, { method: "POST" });
+    if (res.ok) setKilled(!killed);
+  }, [killed]);
 
   return (
     <ThemeProvider
@@ -42,7 +50,10 @@ const App = () => {
                   mode={mode}
                   onChange={toggle}
                 />
-                <KillServerButton />
+                <KillServerButton
+                  killed={killed}
+                  onToggle={handleKillToggle}
+                />
                 <ModeToggle />
               </div>
             </div>
@@ -58,7 +69,7 @@ const App = () => {
                 <p className="text-sm text-muted-foreground">
                   {mode === "ticker" ?
                     "Simulated ticker values updated every 250ms"
-                  : "Simulated CPU, RAM &amp; network metrics"}
+                  : "Simulated CPU, RAM & network metrics"}
                 </p>
               </div>
             </div>
@@ -66,7 +77,7 @@ const App = () => {
 
           {/* Dashboard panels */}
           <main className="mx-auto max-w-6xl px-6 pb-12">
-            <Dashboard />
+            <Dashboard serverKilled={killed} />
           </main>
         </div>
       </TooltipProvider>

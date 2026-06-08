@@ -7,9 +7,13 @@ import { createSSETransport } from "@/lib/transports/sse.ts";
 
 const MAX_SPARKLINE = 60;
 
-type WithPolling = Transport & { setInterval: (ms: number) => void; getRequestsSent: () => number; getBytesTransferred: () => number };
-type WithWs = Transport & { reconnect: () => void; getReconnectCount: () => number; getBytesTransferred: () => number };
-type WithSse = Transport & { reconnect: () => void; getReconnectCount: () => number; getBytesTransferred: () => number };
+type TransportInstance = Transport & {
+  setInterval?: (ms: number) => void;
+  reconnect?: () => void;
+  getReconnectCount?: () => number;
+  getRequestsSent?: () => number;
+  getBytesTransferred?: () => number;
+};
 
 export const useTransport = (kind: "polling" | "websocket" | "sse", initialInterval = 1000) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -20,9 +24,7 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
   const [bytesTransferred, setBytesTransferred] = useState(0);
   const [dataPoints, setDataPoints] = useState<number[]>([]);
   const [currentInterval, setCurrentInterval] = useState(initialInterval);
-  const pollingRef = useRef<WithPolling | null>(null);
-  const wsRef = useRef<WithWs | null>(null);
-  const sseRef = useRef<WithSse | null>(null);
+  const transportRef = useRef<TransportInstance | null>(null);
 
   const pushDataPoint = useCallback((s: Snapshot) => {
     const val = s.mode === "ticker" ? s.value : s.cpu;
@@ -33,11 +35,13 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
   }, []);
 
   useEffect(() => {
+    let t: TransportInstance;
+
     if (kind === "polling") {
       const p = createPollingTransport();
-      pollingRef.current = p;
-      p.onStatusChange(setStatus);
+      t = p;
       p.setInterval(initialInterval);
+      p.onStatusChange(setStatus);
       const unsub = p.subscribe((s) => {
         setSnapshot(s);
         setUpdateCount((c) => c + 1);
@@ -45,12 +49,11 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
         setBytesTransferred(p.getBytesTransferred());
         pushDataPoint(s);
       });
-      return () => { unsub(); p.destroy(); pollingRef.current = null; };
-    }
-
-    if (kind === "websocket") {
+      transportRef.current = t;
+      return () => { unsub(); p.destroy(); transportRef.current = null; };
+    } else if (kind === "websocket") {
       const ws = createWebSocketTransport();
-      wsRef.current = ws;
+      t = ws;
       ws.onStatusChange(setStatus);
       const unsub = ws.subscribe((s) => {
         setSnapshot(s);
@@ -59,12 +62,11 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
         setBytesTransferred(ws.getBytesTransferred());
         pushDataPoint(s);
       });
-      return () => { unsub(); ws.destroy(); wsRef.current = null; };
-    }
-
-    if (kind === "sse") {
+      transportRef.current = t;
+      return () => { unsub(); ws.destroy(); transportRef.current = null; };
+    } else {
       const sse = createSSETransport();
-      sseRef.current = sse;
+      t = sse;
       sse.onStatusChange(setStatus);
       const unsub = sse.subscribe((s) => {
         setSnapshot(s);
@@ -73,22 +75,20 @@ export const useTransport = (kind: "polling" | "websocket" | "sse", initialInter
         setBytesTransferred(sse.getBytesTransferred());
         pushDataPoint(s);
       });
-      return () => { unsub(); sse.destroy(); sseRef.current = null; };
+      transportRef.current = t;
+      return () => { unsub(); sse.destroy(); transportRef.current = null; };
     }
   }, [kind, initialInterval, pushDataPoint]);
 
   const setPollingInterval = useCallback((ms: number) => {
     setCurrentInterval(ms);
-    pollingRef.current?.setInterval(ms);
+    transportRef.current?.setInterval?.(ms);
   }, []);
 
   const reconnect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.reconnect();
-      setReconnectCount(wsRef.current.getReconnectCount());
-    } else if (sseRef.current) {
-      sseRef.current.reconnect();
-      setReconnectCount(sseRef.current.getReconnectCount());
+    transportRef.current?.reconnect?.();
+    if (transportRef.current?.getReconnectCount) {
+      setReconnectCount(transportRef.current.getReconnectCount());
     }
   }, []);
 

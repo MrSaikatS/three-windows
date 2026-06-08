@@ -5,23 +5,19 @@ import { StaleByBadge } from "@/components/metrics/StaleByBadge.tsx";
 import { StatusPill } from "@/components/metrics/StatusPill.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
 import { useTransport } from "@/hooks/useTransport.ts";
-import { formatBytes } from "@/lib/utils";
-import type { Snapshot } from "@/types";
-import { Gauge, HardDrive, Layers } from "lucide-react";
+import { formatBytes, primaryValue, primaryUnit } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { Gauge, HardDrive, Layers, Cpu, Download, Upload } from "lucide-react";
 import { PanelShell } from "./PanelShell.tsx";
-import { TRANSPORT_META } from "./transport-meta.ts";
+import { TRANSPORT_META, type TransportKind } from "./transport-meta.ts";
 
-const primaryValue = (s: Snapshot) => {
-  if (s.mode === "ticker") return s.value.toFixed(2);
-  return s.cpu.toFixed(1);
-};
+interface TransportPanelProps {
+  kind: TransportKind;
+  initialInterval?: number;
+  serverKilled?: boolean;
+}
 
-const primaryUnit = (s: Snapshot) => {
-  if (s.mode === "ticker") return "";
-  return "%";
-};
-
-const SSEPanel = () => {
+const TransportPanel = ({ kind, initialInterval, serverKilled }: TransportPanelProps) => {
   const {
     snapshot,
     status,
@@ -29,12 +25,21 @@ const SSEPanel = () => {
     updateCount,
     bytesTransferred,
     dataPoints,
-  } = useTransport("sse");
+  } = useTransport(kind, initialInterval);
 
   return (
     <PanelShell
-      kind="sse"
-      status={<StatusPill status={status} />}>
+      kind={kind}
+      status={
+        <div className="flex items-center gap-2">
+          {serverKilled && (
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+              Killed
+            </span>
+          )}
+          <StatusPill status={status} />
+        </div>
+      }>
       <div className="flex items-baseline gap-1 py-2">
         <span className="text-3xl font-bold tabular-nums tracking-tight text-foreground">
           {snapshot ? primaryValue(snapshot) : "—"}
@@ -69,12 +74,38 @@ const SSEPanel = () => {
         icon={<HardDrive className="size-3" />}
       />
 
+      {snapshot?.mode === "system" && (
+        <>
+          <Separator className="opacity-40" />
+          <MetricRow
+            label="CPU"
+            value={`${snapshot.cpu.toFixed(1)} %`}
+            icon={<Cpu className="size-3" />}
+          />
+          <MetricRow
+            label="RAM"
+            value={`${snapshot.ram.toFixed(1)} %`}
+            icon={<HardDrive className="size-3" />}
+          />
+          <MetricRow
+            label="Net In"
+            value={`${snapshot.netIn.toFixed(0)} KB/s`}
+            icon={<Download className="size-3" />}
+          />
+          <MetricRow
+            label="Net Out"
+            value={`${snapshot.netOut.toFixed(0)} KB/s`}
+            icon={<Upload className="size-3" />}
+          />
+        </>
+      )}
+
       {dataPoints.length > 1 && (
         <div className="pt-1">
           <Sparkline
             data={dataPoints}
-            strokeColor={TRANSPORT_META.sse.color}
-            gradientId="sse-fill"
+            strokeColor={TRANSPORT_META[kind].color}
+            gradientId={`${kind}-fill`}
           />
         </div>
       )}
@@ -82,4 +113,4 @@ const SSEPanel = () => {
   );
 };
 
-export { SSEPanel };
+export { TransportPanel };

@@ -37,6 +37,7 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/kill") {
+      if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
       killed = true;
       ticker.stop();
       cleanupSse();
@@ -45,6 +46,7 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/respawn") {
+      if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
       killed = false;
       ticker.start();
       return new Response("Respawned", { status: 200 });

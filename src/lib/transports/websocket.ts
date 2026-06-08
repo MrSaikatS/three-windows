@@ -1,34 +1,26 @@
 import type { Snapshot } from "@/types";
 import type { Transport, TransportStatus } from "./types.ts";
-
-const RECONNECT_DELAY = 2000;
+import {
+  createReconnectState,
+  scheduleReconnect,
+  cancelReconnect,
+  manualReconnect,
+  type ReconnectState,
+} from "./shared.ts";
 
 export const createWebSocketTransport = (): Transport & {
   reconnect: () => void;
   getReconnectCount: () => number;
   getBytesTransferred: () => number;
-  onStatusChange: (cb: ((status: TransportStatus) => void) | null) => void;
 } => {
   let ws: WebSocket | null = null;
-  let reconnectCount = 0;
   let bytesTransferred = 0;
   let subscribers = new Set<(s: Snapshot) => void>();
   let statusCallback: ((status: TransportStatus) => void) | null = null;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let manualReconnect = false;
+  const rc: ReconnectState = createReconnectState();
 
   const setStatus = (status: TransportStatus) => {
     statusCallback?.(status);
-  };
-
-  const scheduleReconnect = () => {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (subscribers.size === 0) return;
-    reconnectTimer = setTimeout(() => {
-      reconnectTimer = null;
-      reconnectCount++;
-      connect();
-    }, RECONNECT_DELAY);
   };
 
   const connect = () => {
@@ -45,30 +37,20 @@ export const createWebSocketTransport = (): Transport & {
     ws.onclose = () => {
       ws = null;
       setStatus("disconnected");
-      if (!manualReconnect) scheduleReconnect();
+      if (!rc.manualReconnect) scheduleReconnect(rc, connect, () => subscribers.size > 0);
     };
     ws.onerror = () => {
       ws?.close();
     };
   };
 
-  const cancelReconnect = () => {
-    if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
-      reconnectTimer = null;
-    }
-  };
-
   return {
     reconnect() {
-      manualReconnect = true;
-      cancelReconnect();
-      reconnectCount++;
       ws?.close();
-      connect();
-      manualReconnect = false;
+      ws = null;
+      manualReconnect(rc, connect);
     },
-    getReconnectCount: () => reconnectCount,
+    getReconnectCount: () => rc.reconnectCount,
     getBytesTransferred: () => bytesTransferred,
     onStatusChange(cb) {
       statusCallback = cb;
@@ -79,7 +61,7 @@ export const createWebSocketTransport = (): Transport & {
       return () => {
         subscribers.delete(cb);
         if (subscribers.size === 0) {
-          cancelReconnect();
+          cancelReconnect(rc);
           ws?.close();
           ws = null;
         }
@@ -87,7 +69,7 @@ export const createWebSocketTransport = (): Transport & {
     },
     destroy() {
       subscribers.clear();
-      cancelReconnect();
+      cancelReconnect(rc);
       ws?.close();
       ws = null;
     },

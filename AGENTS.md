@@ -35,11 +35,12 @@ Compact repo guidance. Add to it when you discover something a future agent woul
 - **Kill-server guard**: A `killed` boolean guards all data routes. When adding a new route that serves data or streams, **it must also check `if (killed) return new Response("Server killed", { status: 503 })`** or the transport will appear "Live" after kill.
 - **`src/index.html`** is imported via Bun's HTML-import bundler (`import index from "./index.html"`). It references `./frontend.tsx` as a `<script>` tag. Bun follows the JS/TS import graph from there; `build.ts` scans for `*.html` via `Bun.Glob` as the sole build entrypoints.
 - **Server** code under `src/server/`: `ticker.ts` (250ms interval, random-walk + system modes), `sse.ts` (ReadableStream SSE with retry hint), `ws.ts` (Bun WebSocket handlers with WeakMap unsubscription).
-- **Three transports** (`src/lib/transports/`): `createPollingTransport` (setInterval/fetch), `createWebSocketTransport`, `createSSETransport`. All implement `Transport` interface (`subscribe → unsubscribe`, `onStatusChange`, `destroy`). Both WS and SSE have app-level auto-reconnect (2s delay, `scheduleReconnect`, `cancelReconnect`, `reconnect()`, `getReconnectCount()`). Polling has no reconnect.
-- **`useTransport` hook** (kind: `"polling" | "websocket" | "sse"`) manages snapshot, status, latency, update count, reconnect count, bytes transferred, and a 60-point data ring buffer. Returns a `reconnect()` callback for WS/SSE and `setPollingInterval()` for polling.
-- **Three panels** (`PollingPanel`, `WebSocketPanel`, `SSEPanel`) in a 3-col grid (`Dashboard.tsx`). All panels are footerless — no reconnect buttons, no interval selector. Auto-reconnect is hands-off for WS/SSE; polling runs at fixed 1000ms default.
+- **Three transports** (`src/lib/transports/`): `polling.ts`, `websocket.ts`, `sse.ts`, plus `shared.ts` for extracted reconnect helpers (`createReconnectState`, `scheduleReconnect`, `cancelReconnect`, `manualReconnect`). All implement `Transport` interface (`subscribe → unsubscribe`, `onStatusChange`, `destroy`). WS and SSE share the same app-level auto-reconnect pattern (2s delay, reconnect-on-disconnect). Polling has no reconnect.
+- **`useTransport` hook** (kind: `"polling" | "websocket" | "sse"`) manages snapshot, status, latency, update count, reconnect count, bytes transferred, and a 60-point data ring buffer. Uses a single `transportRef` (union type with optional `setInterval`/`reconnect`). Returns `reconnect()` for WS/SSE and `setPollingInterval()` for polling.
+- **Single `TransportPanel`** (`src/components/panels/TransportPanel.tsx`) with `kind` prop renders all three transports. Used 3× in `Dashboard.tsx` inside a `grid-cols-3` layout. Shows `primaryValue(primaryUnit)` from `lib/utils.ts`. When mode is `"system"`, extra metric rows appear (CPU, RAM, Net In/Out).
 - **Data flow**: Server ticker runs at 250ms → all three transports consume `ticker.latest()` / `ticker.onTick` → panels show identical data at the same moment.
-- **`src/index.ts` routes**: `GET /api/snapshot` (JSON), `POST /api/snapshot` (mode switch), `GET /api/stream/sse` (SSE), `GET /api/stream/ws` (WebSocket upgrade), `GET /api/kill`, `GET /api/respawn`. No router library.
+- **`src/index.ts` routes**: `GET /api/snapshot` (JSON), `POST /api/snapshot` (mode switch), `GET /api/stream/sse` (SSE), `GET /api/stream/ws` (WebSocket upgrade), `POST /api/kill`, `POST /api/respawn` (both enforce POST, reject other methods with 405). No router library.
+- **Kill state** is lifted to `App.tsx` and passed as `serverKilled` prop → `Dashboard` → `TransportPanel`. `KillServerButton` is a controlled component (`killed` + `onToggle` props) that POSTs to `/api/kill` or `/api/respawn`.
 
 ## Styling
 
@@ -84,5 +85,6 @@ Compact repo guidance. Add to it when you discover something a future agent woul
 ## Gotchas
 
 - **TS2882** for `src/frontend.tsx` importing `./index.css` is expected — Bun handles CSS imports directly; TS doesn't understand them. Don't try to fix it.
-- **SSE auto-reconnect vs. server kill**: SSE has app-level reconnect (same as WS). After kill, browser `EventSource` receives a 503 from the route guard and its `onerror` fires → SSE transport closes the EventSource and schedules reconnect. The browser never reconnects on its own because we close it on error. This is the same pattern as WS.
+- **SSE auto-reconnect vs. server kill**: SSE has app-level reconnect (same as WS). After kill, browser `EventSource` receives a 503 from the route guard and its `onerror` fires → SSE transport closes the EventSource and schedules reconnect. The browser never reconnects on its own because we close it on error.
 - **No custom registries in shadcn**: `components.json` has `registries: {}`. Components come from `@shadcn` default registry.
+- **`primaryValue`/`primaryUnit`** are in `src/lib/utils.ts`, not duplicated per panel — add new snapshot fields there.
